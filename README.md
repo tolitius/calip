@@ -39,13 +39,15 @@ Now let's measure them:
                     #'boot.user/rmult})
 
 => (rsum 10)
-"#'boot.user/rsum" took: 31,506 nanos
+"#'boot.user/rsum" (10) took: 31,506 nanos
 45
 
 => (rmult 10)
-"#'boot.user/rmult" took: 17,334 nanos
+"#'boot.user/rmult" (10) took: 17,334 nanos
 362880
 ```
+
+`(10)` here shows the arguments to a function that is measured, or "an" argument in this case.
 
 these measurements can be removed of course:
 
@@ -55,7 +57,7 @@ these measurements can be removed of course:
 => (rsum 10)
 45
 => (rmult 10)
-"#'boot.user/rmult" took: 16,485 nanos
+"#'boot.user/rmult" (10) took: 16,485 nanos
 362880
 ```
 
@@ -72,24 +74,58 @@ or remove it from both:
 
 ## Reporting
 
-By default calip will use `println` to report metrics, but it is pluggable:
+By default calip will use `println` and a "default format" as shown above to report metrics, but it is pluggable.
+You can pass a report function to `calip/measure`. calip would pass a map to this function with:
+
+```clojure
+{:took took     ;; time this function took to execute in nanoseconds
+ :fname fname   ;; function name with a namespace
+ :args args}    ;; arguments that were passed to this function
+```
+
+Quite a useful scenario to use calip on the live application that writes logs. We can tap into that:
 
 ```clojure
 => (require '[clojure.tools.logging :as log])
 
-=> (calip/measure #{#'boot.user/rsum #'boot.user/rmult}
-                  {:report #(log/info %)})
+=> (calip/measure #{#'boot.user/rsum #'boot.user/rmult} {:report #(log/info (calip/default-format %))})
 
 => (rsum 10)
-INFO  boot.user - "#'boot.user/rsum" took: 14,793 nanos
+13:42:04.048 [nREPL-worker-24] INFO  boot.user - "#'boot.user/rsum" (10) took: 13,091 nanos
 45
-
 => (rmult 10)
-INFO  boot.user - "#'boot.user/rmult" took: 16,279 nanos
+13:42:07.687 [nREPL-worker-24] INFO  boot.user - "#'boot.user/rmult" (10) took: 16,535 nanos
 362880
 ```
 
-* _`log/info` is a macro, hence in order to compose we did `#(log/info %)`_
+notice we used `(calip/default-format %)` to format that `{:took .., :fname .., :args ..}` map, but you can of course customize it:
+
+```clojure
+=> (defn create-life [{:keys [galaxy planet]}] "creating life...")
+#'boot.user/create-life
+=>
+
+=> (create-life {:galaxy "pegasus" :planet "athos"})
+"creating life..."
+
+=> (calip/measure #{#'boot.user/create-life} {:report (fn [{:keys [took fname]}]
+                                                        (log/info fname "took" took "ns"))})
+
+=> (create-life {:galaxy "pegasus" :planet "athos"})
+13:54:20.334 [nREPL-worker-25] INFO  boot.user - #'boot.user/create-life took 2681 ns
+"creating life..."
+```
+
+or with args:
+
+```clojure
+=> (calip/measure #{#'boot.user/create-life} {:report (fn [{:keys [took fname args]}]
+                                                        (log/info fname "with args:" args "took" took "ns"))})
+
+=> (create-life {:galaxy "pegasus" :planet "athos"})
+13:54:56.884 [nREPL-worker-26] INFO  boot.user - #'boot.user/create-life with args: ({:galaxy pegasus, :planet athos}) took 2739 ns
+"creating life..."
+```
 
 ## License
 
