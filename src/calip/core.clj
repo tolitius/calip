@@ -20,6 +20,22 @@
              :args args})
     v))
 
+(defn- on-error [{:keys [report]
+                  :or {report default-report}} fname f & args]
+  "wraps a function call in a try/catch with a timer
+  in case of na error reports a runtime function state (i.e. arguments)
+  and how long the function execution took"
+  (let [start (System/nanoTime)]
+    (try
+      (apply f args)
+      (catch Throwable t
+        (let [took (- (System/nanoTime) start)]
+          (report {:took took
+                   :fname fname
+                   :args args
+                   :error t})
+          (throw t))))))
+
 (defn measure
   "takes a set of functions (namespace vars) with 'optional options'
    and wraps them with timers.
@@ -31,11 +47,14 @@
   by default 'measure' will use 'println' to report times functions took"
   ([fs]
    (measure fs {}))
-  ([fs opts]
+  ([fs {:keys [on-error?] :as opts}]
+   (let [m-fn (if on-error?
+                on-error
+                calip)]
    (doseq [f fs]
      (hooke/add-hook f                            ;; target var
                      (str f)                      ;; hooke key
-                     (partial calip opts f)))))   ;; wrapper
+                     (partial m-fn opts f))))))   ;; wrapper
 
 (defn uncalip [fs]
   "takes a set of functions (namespace vars) and removes times from them.
