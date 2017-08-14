@@ -4,15 +4,21 @@ measuring function performance on demand _without_ a need to alter the code
 
 [![Clojars Project](http://clojars.org/tolitius/calip/latest-version.svg)](http://clojars.org/tolitius/calip)
 
+- [All functions deserve to be measured](#all-functions-deserve-to-be-measured)
+- [Performance on demand](#performance-on-demand)
+- [Taming runtime errors](#taming-runtime-errors)
+  - [Measuring on error](#measuring-on-error)
+- [Reporting](#reporting)
+
 ## All functions deserve to be measured
 
-calip measures function performance on demand, or in case of an error, without a need to alter the code.
+calip measures function performance on demand, or in case of an error, _without_ a need to alter the code.
 
 It does so by adding an AOP around advice (i.e. a weaved timer function wrapper) with [robert hooke](https://github.com/technomancy/robert-hooke)
 
 It comes really handy at development time, as well as for deployed applications:
 
-* when you know something is slowing it down and need an _on demand_ performance metrics with runtime arguments
+* when you need _on demand_ performance metrics with runtime arguments
 * when you need to see the actual runtime arguments in case of an error
 
 In which case you can just connect to a deployed application via an `nREPL`, and add measurements to _any_ "functional suspect".
@@ -77,9 +83,15 @@ or remove it from both:
 
 ## Taming runtime errors
 
-Most of the time in case of a runtime error/exception JVM reports an array of stack trace elements, each representing one stack frame. This array is also known as a stacktrace. While it is immensely useful for tracking down the root cause of an error it falls short to provide a _state_ snapshot at the time an error occurred: i.e. "what were the arguments passed into a function which could have caused this error in the first place?"
+Most of the time, in case of a runtime error/exception, JVM reports an array of stack trace elements, each representing one stack frame. This array is also known as a stacktrace.
 
-`calip` helps tracking down these runtime arguments by setting an "`on-error?`" flag on a measurement:
+While it is immensely useful for tracking down an error scope (i.e. _where_ it happened), it falls short to provide a _state_ snapshot at the time an error occurred: i.e. "what were the arguments passed to a function _at the time_ the error occurred?"
+
+`calip` helps tracking down these runtime arguments by setting an "`on-error?`" flag on a measurement.
+
+### Measuring on error
+
+As an example let's take a function that creates a socket (i.e. connects) to external systems:
 
 ```clojure
 => (defn connect [{:keys [host port]}]
@@ -98,9 +110,9 @@ java.net.ConnectException: Operation timed out
 java.net.ConnectException: Connection refused
 ```
 
-In case of an error JVM reports an exception but there is no visual on what the arguments were that caused this exception.
+In case of an error JVM reports an exception but there is no visual on what the arguments were at the time of this exception.
 
-Let's fix it without a code change / on a running application:
+Let's fix it _without a code change_ / on a running application:
 
 ```clojure
 => (calip/measure #{#'boot.user/connect} {:on-error? true})
@@ -129,7 +141,7 @@ java.net.ConnectException: Operation timed out
 java.net.ConnectException: Connection refused
 ```
 
-> `on-error?` flag can be combined with a custom `:report` function that is documented in the next section.
+> _`:on-error?` flag can be combined with a custom `:report` function that is documented in the next section._
 
 ## Reporting
 
