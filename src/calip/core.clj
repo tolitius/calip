@@ -3,9 +3,9 @@
 
 (defn default-format [{:keys [fname took args returned error]}]
   (if-not error
-    (format "\"%s\" %s took: %,d nanos. returned: %s"
+    (format "\"%s\" args: %s | took: %,d nanos | returned: %s"
             fname args took returned)
-    (format "\"%s\" %s took: %,d nanos. error %s"
+    (format "\"%s\" args: %s | took: %,d nanos | error: %s"
             fname args took error)))
 
 (defn default-report [results]
