@@ -1,9 +1,12 @@
 (ns calip.core
   (:require [robert.hooke :as hooke]))
 
-(defn default-format [{:keys [fname took args]}]
-  (format "\"%s\" %s took: %,d nanos"
-          fname args took))
+(defn default-format [{:keys [fname took args returned error]}]
+  (if-not error
+    (format "\"%s\" %s took: %,d nanos. returned: %s"
+            fname args took returned)
+    (format "\"%s\" %s took: %,d nanos. error %s"
+            fname args took error)))
 
 (defn default-report [results]
   (println (default-format results)))
@@ -17,7 +20,8 @@
         took (- (System/nanoTime) start)]
     (report {:took took
              :fname fname
-             :args args})
+             :args args
+             :returned v})
     v))
 
 (defn- on-error [{:keys [report]
