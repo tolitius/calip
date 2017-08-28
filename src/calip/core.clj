@@ -40,6 +40,27 @@
                    :error t})
           (throw t))))))
 
+(defn- var->str->symbol
+  "will convert var (i.e. #'app.foo/bar)
+  or a stringed var (i.e. \"#'app.foo/bar\") to a symbol"
+  [v]
+  (->> (str v)
+       (drop 2)     ;; dropping "#'"
+       (apply str)
+       symbol))
+
+(defn- f-to-var
+  "makes sure a function 'f' is a resolvable var
+   returns the resolved var
+   in case the var can't be resolved, throws a runtime exception"
+  [f]
+  (let [v (-> (var->str->symbol f)
+              resolve)]
+    (or v
+        (throw (RuntimeException. (str "could not resolve \"" f "\". "
+                                       "check the namespace prefix, function name spelling, etc. "
+                                       "pass a fully qualified function name (i.e. \"#'app.foo/far\")"))))))
+
 (defn measure
   "takes a set of functions (namespace vars) with 'optional options'
    and wraps them with timers.
@@ -55,13 +76,15 @@
    (let [m-fn (if on-error?
                 on-error
                 calip)]
-   (doseq [f fs]
-     (hooke/add-hook f                            ;; target var
-                     (str f)                      ;; hooke key
-                     (partial m-fn opts f))))))   ;; wrapper
+     (doseq [f fs]
+       (let [fvar (f-to-var f)]
+         (hooke/add-hook fvar                             ;; target var
+                         (str fvar)                       ;; hooke key
+                         (partial m-fn opts fvar)))))))   ;; wrapper
 
 (defn uncalip [fs]
   "takes a set of functions (namespace vars) and removes times from them.
    i.e. (uncalip #{#'app/foo #'app/bar})"
   (doseq [f fs]
-    (hooke/clear-hooks f)))
+    (hooke/clear-hooks
+      (f-to-var f))))
