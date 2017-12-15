@@ -1,10 +1,10 @@
 # calip(er)
 
-measuring function performance on demand _without_ a need to alter the code
+measuring and debugging functions on demand _**without**_ a need to alter the code
 
 [![Clojars Project](http://clojars.org/tolitius/calip/latest-version.svg)](http://clojars.org/tolitius/calip)
 
-- [All functions deserve to be measured](#all-functions-deserve-to-be-measured)
+- [What does it do?](#what-does-it-do)
 - [Performance on demand](#performance-on-demand)
 - [Taming runtime errors](#taming-runtime-errors)
   - [Measuring on error](#measuring-on-error)
@@ -12,18 +12,19 @@ measuring function performance on demand _without_ a need to alter the code
   - [Custom reporting](#custom-reporting)
   - [Custom reports on errors](custom-reports-on-errors)
 
-## All functions deserve to be measured
+## What does it do?
 
-calip measures and debugs functions on demand, or in case of an error, _without_ a need to alter the code.
+calip _measures_ and _debugs_ functions on demand, or in case of an error, _**without**_ a need to alter the code.
 
 It does so by adding an AOP around advice (i.e. a weaved timer function wrapper) with [robert hooke](https://github.com/technomancy/robert-hooke)
 
 It comes really handy at development time, as well as for deployed applications:
 
 * when you need _on demand_ performance metrics with runtime arguments
-* when you need to see the actual runtime arguments in case of an error
+* when you need to see the actual runtime function arguments in case of an error
+* when you need to see the actual runtime function arguments as the program is running
 
-In which case you can just connect to a deployed application via an `nREPL`, and add measurements to _any_ "functional suspect".
+In which case you can just connect to a deployed application via an `nREPL`, and add measurements, handlers, logs to _any_ "functional suspect".
 
 ## Performance on demand
 
