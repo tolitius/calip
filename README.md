@@ -261,7 +261,7 @@ adding hook to #'boot.user/rmult
 adding hook to #'boot.user/rsum
 ```
 
-i.e. it expands `"#'boot.user/*"` into all the `'boot.user` functions currently known the runtime.
+i.e. it expands `"#'boot.user/*"` into all the `'boot.user` functions currently known to the runtime.
 
 ## License
 
