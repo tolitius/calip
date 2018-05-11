@@ -11,6 +11,7 @@ measuring and debugging functions on demand _**without**_ a need to alter the co
 - [Reporting](#reporting)
   - [Custom reporting](#custom-reporting)
   - [Custom reports on errors](custom-reports-on-errors)
+-[From a single function to the whole namespace](from-a-single-function-to-the-whole-namespace)
 
 ## What does it do?
 
@@ -228,12 +229,39 @@ or
 boot.user=> (calip/measure #{#'boot.user/rsum}
                            {:report #(log/info (calip/default-format %))
                             :on-error? true})
-                            
+
 boot.user=> (rsum "oops")
 INFO  boot.user - "#'boot.user/rsum" args: ("oops") | took: 87,268 nanos | error: java.lang.ClassCastException: java.lang.String cannot be cast to java.lang.Number
 ```
 
+## From a single function to the whole namespace
 
+While profiling applications there are two questions that are very frequent:
+
+> out of all these functions what _exactly_ takes so long?
+
+and
+
+> how long does _each function_ take in this module (namespace)?
+
+Instead of explicitly listing all the functions in a particular namespace, `calip` accepts strings in a `"#'foo.bar/*"` format that it would expand to include all the functions in a particular, in this case `'foo.bar`, namespace:
+
+```clojure
+boot.user=> (calip/measure #{"#'boot.user/*" #'boot.user/rmult})
+```
+
+would add "hooks" to:
+
+```clojure
+adding hook to #'boot.user/+version+
+adding hook to #'boot.user/check-sources
+adding hook to #'boot.user/dev
+adding hook to #'boot.user/log4b
+adding hook to #'boot.user/rmult
+adding hook to #'boot.user/rsum
+```
+
+i.e. it expands `"#'boot.user/*"` into all the `'boot.user` functions currently known the runtime.
 
 ## License
 

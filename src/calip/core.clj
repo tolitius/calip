@@ -1,5 +1,6 @@
 (ns calip.core
-  (:require [robert.hooke :as hooke]))
+  (:require [clojure.string :as s]
+            [robert.hooke :as hooke]))
 
 (defn default-format [{:keys [fname took args returned error]}]
   (if-not error
@@ -61,6 +62,28 @@
                                        "check the namespace prefix, function name spelling, etc. "
                                        "pass a fully qualified function name (i.e. \"#'app.foo/far\")"))))))
 
+(defn- f-to-fs
+  "converts a namespace/var string in a \"#'foo.bar/*\" format
+   to a sequence of all the vars/functions in that namespace
+
+   => (calip/f-to-fs \"#'boot.user/*\")
+   (#'boot.user/log4b #'boot.user/dev #'boot.user/check-sources #'boot.user/rsum #'boot.user/rmult #'boot.user/+version+)"
+  [f]
+  (if (and (string? f)
+           (s/ends-with? f "/*"))
+    (-> (s/split f #"/")
+        first
+        (s/replace #"#|'" "")
+        symbol
+        ns-publics
+        (->> (map second)))
+    [f]))
+
+(defn- unwrap-stars
+  "unwraps the stars: #'foo.bar/* to a set of all functions in that namespace"
+  [fs]
+  (set (mapcat f-to-fs fs)))
+
 (defn measure
   "takes a set of functions (namespace vars) with 'optional options'
    and wraps them with timers.
@@ -76,8 +99,9 @@
    (let [m-fn (if on-error?
                 on-error
                 calip)]
-     (doseq [f fs]
+     (doseq [f (unwrap-stars fs)]
        (let [fvar (f-to-var f)]
+         (println "adding hook to" fvar)
          (hooke/add-hook fvar                             ;; target var
                          (str fvar)                       ;; hooke key
                          (partial m-fn opts fvar)))))))   ;; wrapper
