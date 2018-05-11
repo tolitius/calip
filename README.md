@@ -10,8 +10,8 @@ measuring and debugging functions on demand _**without**_ a need to alter the co
   - [Measuring on error](#measuring-on-error)
 - [Reporting](#reporting)
   - [Custom reporting](#custom-reporting)
-  - [Custom reports on errors](custom-reports-on-errors)
--[From a single function to the whole namespace](from-a-single-function-to-the-whole-namespace)
+  - [Custom reports on errors](#custom-reports-on-errors)
+- [From a single function to the whole namespace](#from-a-single-function-to-the-whole-namespace)
 
 ## What does it do?
 
