@@ -109,6 +109,6 @@
 (defn uncalip [fs]
   "takes a set of functions (namespace vars) and removes times from them.
    i.e. (uncalip #{#'app/foo #'app/bar})"
-  (doseq [f fs]
+  (doseq [f (unwrap-stars fs)]
     (hooke/clear-hooks
       (f-to-var f))))
