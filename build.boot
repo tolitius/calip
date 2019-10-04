@@ -1,9 +1,11 @@
-(def +version+ "0.1.4")
+(def +version+ "0.1.5")
 
 (set-env!
   :source-paths #{"src"}
-  :dependencies '[[org.clojure/clojure             "1.8.0"]
-                  [robert/hooke                    "1.3.0"]
+  :dependencies '[[robert/hooke                    "1.3.0"]
+
+                  ;; provided deps
+                  [org.clojure/clojure             "1.10.1"  :scope "provided"]
 
                   ;; test deps
                   [ch.qos.logback/logback-classic  "1.1.3"   :scope "test"]
