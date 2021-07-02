@@ -43,7 +43,7 @@
 
 (defn- var->str->symbol
   "will convert var (i.e. #'app.foo/bar)
-  or a stringed var (i.e. \"#'app.foo/bar\") to a symbol"
+   or a stringed var (i.e. \"#'app.foo/bar\") to a symbol"
   [v]
   (->> (str v)
        (drop 2)     ;; dropping "#'"
@@ -66,8 +66,8 @@
   "converts a namespace/var string in a \"#'foo.bar/*\" format
    to a sequence of all the vars/functions in that namespace
 
-   => (calip/f-to-fs \"#'boot.user/*\")
-   (#'boot.user/log4b #'boot.user/dev #'boot.user/check-sources #'boot.user/rsum #'boot.user/rmult #'boot.user/+version+)"
+   => (calip/f-to-fs \"#'user/*\")
+   (#'user/log4b #'user/dev #'user/check-sources #'user/rsum #'user/rmult #'user/+version+)"
   [f]
   (if (and (string? f)
            (s/ends-with? f "/*"))
