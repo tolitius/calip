@@ -31,11 +31,13 @@ In which case you can just connect to a deployed application via an `nREPL`, and
 
 Let's pretend we have an app with two functional suspects:
 
+> _if playing from the calip source dir you can:<br/>$ make repl_
+
 ```clojure
 => (defn rsum [n] (reduce + (range n)))
-#'boot.user/rsum
+#'user/rsum
 => (defn rmult [n] (reduce *' (range 1 n)))
-#'boot.user/rmult
+#'user/rmult
 
 => (rsum 10)
 45
@@ -48,15 +50,15 @@ Now let's measure them:
 ```clojure
 => (require '[calip.core :as calip])
 
-=> (calip/measure #{#'boot.user/rsum
-                    #'boot.user/rmult})
+=> (calip/measure #{#'user/rsum
+                    #'user/rmult})
 
 => (rsum 10)
-"#'boot.user/rsum" args: (10) | took: 13,969 nanos | returned: 45
+"#'user/rsum" args: (10) | took: 13,969 nanos | returned: 45
 45
 
 => (rmult 10)
-"#'boot.user/rmult" args: (10) | took: 16,402 nanos | returned: 362880
+"#'user/rmult" args: (10) | took: 16,402 nanos | returned: 362880
 362880
 ```
 
@@ -65,19 +67,19 @@ Now let's measure them:
 these measurements can be removed of course:
 
 ```clojure
-=> (calip/uncalip #{#'boot.user/rsum})
+=> (calip/uncalip #{#'user/rsum})
 
 => (rsum 10)
 45
 => (rmult 10)
-"#'boot.user/rmult" args: (10) | took: 17,479 nanos | returned: 362880
+"#'user/rmult" args: (10) | took: 17,479 nanos | returned: 362880
 362880
 ```
 
 or remove it from both:
 
 ```clojure
-=> (calip/uncalip #{#'boot.user/rsum #'boot.user/rmult})
+=> (calip/uncalip #{#'user/rsum #'user/rmult})
 
 => (rsum 10)
 45
@@ -119,7 +121,7 @@ In case of an error JVM reports an exception but there is no visual on what the 
 Let's fix it _without a code change_ / on a running application:
 
 ```clojure
-=> (calip/measure #{#'boot.user/connect} {:on-error? true})
+=> (calip/measure #{#'user/connect} {:on-error? true})
 ```
 
 we can still normally connect without any extra logging / metrics:
@@ -133,14 +135,14 @@ but in case of an error, in addition to the time a function took, `calip` will r
 
 ```clojure
 => (connect {:host "8.8.8.8" :port 1025})
-"#'boot.user/connect" args: ({:host "8.8.8.8", :port 1025}) | took: 75,696,573,373 nanos | error: java.net.ConnectException: Operation timed out
+"#'user/connect" args: ({:host "8.8.8.8", :port 1025}) | took: 75,696,573,373 nanos | error: java.net.ConnectException: Operation timed out
 
 java.net.ConnectException: Operation timed out
 ```
 
 ```clojure
 => (connect {:host "127.0.0.1" :port 22})
-"#'boot.user/connect" args: ({:host "127.0.0.1", :port 22}) | took: 309,753 nanos | error: java.net.ConnectException: Connection refused
+"#'user/connect" args: ({:host "127.0.0.1", :port 22}) | took: 309,753 nanos | error: java.net.ConnectException: Connection refused
 
 java.net.ConnectException: Connection refused
 ```
@@ -164,13 +166,13 @@ Quite a useful scenario is to use calip to measure or debug parts of the applica
 ```clojure
 => (require '[clojure.tools.logging :as log])
 
-=> (calip/measure #{#'boot.user/rsum #'boot.user/rmult} {:report #(log/info (calip/default-format %))})
+=> (calip/measure #{#'user/rsum #'user/rmult} {:report #(log/info (calip/default-format %))})
 
 => (rsum 10)
-13:42:04.048 [nREPL-worker-24] INFO  boot.user - "#'boot.user/rsum" args: (10) | took: 14,928 nanos | returned: 45
+13:42:04.048 [nREPL-worker-24] INFO  user - "#'user/rsum" args: (10) | took: 14,928 nanos | returned: 45
 45
 => (rmult 10)
-13:42:07.687 [nREPL-worker-24] INFO  boot.user - "#'boot.user/rmult" args: (10) | took: 16,280 nanos | returned: 362880
+13:42:07.687 [nREPL-worker-24] INFO  user - "#'user/rmult" args: (10) | took: 16,280 nanos | returned: 362880
 362880
 ```
 
@@ -180,29 +182,32 @@ notice we used `(calip/default-format %)` to format that `{:took .., :fname .., 
 
 ```clojure
 => (defn create-life [{:keys [galaxy planet]}] "creating life...")
-#'boot.user/create-life
+#'user/create-life
 =>
 
 => (create-life {:galaxy "pegasus" :planet "athos"})
 "creating life..."
 
-=> (calip/measure #{#'boot.user/create-life} {:report (fn [{:keys [took fname]}]
-                                                        (log/info fname "took" took "ns"))})
+=> (calip/measure #{#'user/create-life} {:report (fn [{:keys [took fname]}]
+                                                   (log/info fname "took" took "ns"))})
 
 => (create-life {:galaxy "pegasus" :planet "athos"})
-13:54:20.334 [nREPL-worker-25] INFO  boot.user - #'boot.user/create-life took 2637 ns
+13:54:20.334 [nREPL-worker-25] INFO  user - #'user/create-life took 2637 ns
 "creating life..."
 ```
 
 or with args and return values:
 
 ```clojure
-=> (calip/measure #{#'boot.user/create-life} {:report (fn [{:keys [took fname args returned]}]
-                                                        (log/info "\n|>" fname "\n|> with args:" args "\n|> took:" took "ns \n|> return value:" returned))})
+=> (calip/measure #{#'user/create-life} {:report (fn [{:keys [took fname args returned]}]
+                                                   (log/info "\n|>" fname
+                                                             "\n|> with args:" args
+                                                             "\n|> took:" took
+                                                             "ns \n|> return value:" returned))})
 
 => (create-life {:galaxy "pegasus" :planet "athos"})
-INFO  boot.user -
-|> #'boot.user/create-life
+INFO  user -
+|> #'user/create-life
 |> with args: ({:galaxy pegasus, :planet athos})
 |> took: 2911 ns
 |> return value: creating life...
@@ -215,23 +220,23 @@ INFO  boot.user -
 A custom `:report` function can be combined with an `:on-error?` flag:
 
 ```clojure
-boot.user=> (calip/measure #{#'boot.user/connect}
-                           {:on-error? true
-                            :report #(log/info (calip/default-format %))})
+user=> (calip/measure #{#'user/connect}
+                      {:on-error? true
+                       :report #(log/info (calip/default-format %))})
 
-boot.user=> (connect {:host "127.0.0.1" :port 22})
-INFO  boot.user - "#'boot.user/connect" args: ({:host "127.0.0.1", :port 22}) | took: 339,019 nanos | error: java.net.ConnectException: Connection refused
+user=> (connect {:host "127.0.0.1" :port 22})
+INFO  user - "#'user/connect" args: ({:host "127.0.0.1", :port 22}) | took: 339,019 nanos | error: java.net.ConnectException: Connection refused
 ```
 
 or
 
 ```clojure
-boot.user=> (calip/measure #{#'boot.user/rsum}
-                           {:report #(log/info (calip/default-format %))
-                            :on-error? true})
+user=> (calip/measure #{#'user/rsum}
+                      {:report #(log/info (calip/default-format %))
+                       :on-error? true})
 
-boot.user=> (rsum "oops")
-INFO  boot.user - "#'boot.user/rsum" args: ("oops") | took: 87,268 nanos | error: java.lang.ClassCastException: java.lang.String cannot be cast to java.lang.Number
+user=> (rsum "oops")
+INFO  user - "#'user/rsum" args: ("oops") | took: 87,268 nanos | error: java.lang.ClassCastException: java.lang.String cannot be cast to java.lang.Number
 ```
 
 ## From a single function to the whole namespace
@@ -247,25 +252,25 @@ and
 Instead of explicitly listing all the functions in a particular namespace, `calip` accepts strings in a `"#'foo.bar/*"` format that it would expand to include all the functions in a particular, in this case `'foo.bar`, namespace:
 
 ```clojure
-boot.user=> (calip/measure #{"#'boot.user/*" #'boot.user/rmult})
+user=> (calip/measure #{"#'user/*" #'user/rmult})
 ```
 
 would add "hooks" to:
 
 ```clojure
-adding hook to #'boot.user/+version+
-adding hook to #'boot.user/check-sources
-adding hook to #'boot.user/dev
-adding hook to #'boot.user/log4b
-adding hook to #'boot.user/rmult
-adding hook to #'boot.user/rsum
+adding hook to #'user/+version+
+adding hook to #'user/check-sources
+adding hook to #'user/dev
+adding hook to #'user/log4b
+adding hook to #'user/rmult
+adding hook to #'user/rsum
 ```
 
-i.e. it expands `"#'boot.user/*"` into all the `'boot.user` functions currently known to the runtime.
+i.e. it expands `"#'user/*"` into all the `'user` functions currently known to the runtime.
 
 ## License
 
-Copyright © 2017 tolitius
+Copyright © 2021 tolitius
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.
