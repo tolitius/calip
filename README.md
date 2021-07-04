@@ -11,7 +11,7 @@ measuring and debugging functions on demand _**without**_ a need to alter the co
 - [Reporting](#reporting)
   - [Custom reporting](#custom-reporting)
   - [Custom reports on errors](#custom-reports-on-errors)
-- [From a single function to the whole namespace](#from-a-single-function-to-the-whole-namespace)
+- [Match and wrap many functions](#match-and-wrap-many-functions)
 
 ## What does it do?
 
@@ -239,7 +239,7 @@ user=> (rsum "oops")
 INFO  user - "#'user/rsum" args: ("oops") | took: 87,268 nanos | error: java.lang.ClassCastException: java.lang.String cannot be cast to java.lang.Number
 ```
 
-## From a single function to the whole namespace
+## Match and wrap many functions
 
 While profiling applications there are two questions that are very frequent:
 
@@ -249,10 +249,25 @@ and
 
 > how long does _each function_ take in this module (namespace)?
 
-Instead of explicitly listing all the functions in a particular namespace, `calip` accepts strings in a `"#'foo.bar/*"` format that it would expand to include all the functions in a particular, in this case `'foo.bar`, namespace:
+instead of explicitly listing all the functions in a particular namespace, `calip` accepts strings in a:
+
+* `"#'foo.bar/prefix-*"` format that would expand to include function names that starts with "`prefix-`" in a particular namespace
+* `"#'foo.bar/*"` format that would expand to include all the functions in a particular namespace
+
+for example wrap only functions in a `user` namespace that start with "`r`":
 
 ```clojure
-user=> (calip/measure #{"#'user/*" #'user/rmult})
+user=> (calip/measure #{"#'user/r*"})
+```
+```clojure
+adding hook to #'user/rmult
+adding hook to #'user/rsum
+```
+
+or _all_ of the functions in the `user` ns:
+
+```clojure
+user=> (calip/measure #{"#'user/*"})
 ```
 
 would add "hooks" to:

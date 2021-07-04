@@ -62,6 +62,25 @@
                                        "check the namespace prefix, function name spelling, etc. "
                                        "pass a fully qualified function name (i.e. \"#'app.foo/far\")"))))))
 
+(defn- expand-all-vars [f]
+  (-> (s/split f #"/")
+      first
+      (s/replace #"#|'" "")
+      symbol
+      ns-publics
+      (->> (map second))))
+
+(defn f-starts-with [with x]
+  (let [[_ f] (-> x str (s/split #"/"))]
+    (s/starts-with? f with)))
+
+(defn expand-some-vars [f]
+  (let [[_ fs] (s/split f #"/")        ;; #'foo.bar/baz-* will split as ["#'foo.bar" "baz-*"]
+        [prefix _] (s/split fs #"\*")  ;; ["bar-" "*"]
+        all-fs (expand-all-vars f)]
+    (filterv (partial f-starts-with prefix)
+             all-fs)))
+
 (defn- f-to-fs
   "converts a namespace/var string in a \"#'foo.bar/*\" format
    to a sequence of all the vars/functions in that namespace
@@ -69,15 +88,12 @@
    => (calip/f-to-fs \"#'user/*\")
    (#'user/log4b #'user/dev #'user/check-sources #'user/rsum #'user/rmult #'user/+version+)"
   [f]
-  (if (and (string? f)
-           (s/ends-with? f "/*"))
-    (-> (s/split f #"/")
-        first
-        (s/replace #"#|'" "")
-        symbol
-        ns-publics
-        (->> (map second)))
-    [f]))
+  (cond
+    (and (string? f)
+         (s/ends-with? f "/*"))  (expand-all-vars f)
+    (and (string? f)
+         (s/ends-with? f "*"))   (expand-some-vars f)
+    :else [f]))
 
 (defn- unwrap-stars
   "unwraps the stars: #'foo.bar/* to a set of all functions in that namespace"
@@ -101,7 +117,7 @@
                 calip)]
      (doseq [f (unwrap-stars fs)]
        (let [fvar (f-to-var f)]
-         (println "adding hook to" fvar)
+         (println "wrapping" fvar)
          (hooke/add-hook fvar                             ;; target var
                          (str fvar)                       ;; hooke key
                          (partial m-fn opts fvar)))))))   ;; wrapper
@@ -111,4 +127,5 @@
    i.e. (uncalip #{#'app/foo #'app/bar})"
   (doseq [f (unwrap-stars fs)]
     (hooke/clear-hooks
-      (f-to-var f))))
+      (f-to-var f))
+    (println "remove a wrapper from" f)))
