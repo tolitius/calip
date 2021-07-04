@@ -4,32 +4,32 @@ measuring and debugging functions on demand _**without**_ a need to alter the co
 
 [![Clojars Project](http://clojars.org/tolitius/calip/latest-version.svg)](http://clojars.org/tolitius/calip)
 
-- [What does it do?](#what-does-it-do)
-- [Performance on demand](#performance-on-demand)
-- [Taming runtime errors](#taming-runtime-errors)
-  - [Measuring on error](#measuring-on-error)
-- [Reporting](#reporting)
-  - [Custom reporting](#custom-reporting)
-  - [Custom reports on errors](#custom-reports-on-errors)
-- [Match and wrap many functions](#match-and-wrap-many-functions)
+- [what does it do?](#what-does-it-do)
+- [performance on demand](#performance-on-demand)
+- [taming runtime errors](#taming-runtime-errors)
+  - [measuring on error](#measuring-on-error)
+- [reporting](#reporting)
+  - [custom reporting](#custom-reporting)
+  - [custom reports on errors](#custom-reports-on-errors)
+- [match and wrap many functions](#match-and-wrap-many-functions)
 
-## What does it do?
+## what does it do?
 
 calip _measures_ and _debugs_ functions on demand, or in case of an error, _**without**_ a need to alter the code.
 
-It does so by adding an AOP around advice (i.e. a weaved timer function wrapper) with [robert hooke](https://github.com/technomancy/robert-hooke)
+it does so by adding an AOP around advice (i.e. a weaved timer function wrapper) with [robert hooke](https://github.com/technomancy/robert-hooke)
 
-It comes really handy at development time, as well as for deployed applications:
+it comes really handy at development time, as well as for deployed applications:
 
 * when you need _on demand_ performance metrics with runtime arguments
 * when you need to see the actual runtime function arguments in case of an error
 * when you need to see the actual runtime function arguments as the program is running
 
-In which case you can just connect to a deployed application via an `nREPL`, and add measurements, handlers, logs to _any_ "functional suspect".
+in which case you can just connect to a deployed application via an `nREPL`, and add measurements, handlers, logs to _any_ "functional suspect".
 
-## Performance on demand
+## performance on demand
 
-Let's pretend we have an app with two functional suspects:
+let's pretend we have an app with two functional suspects:
 
 > _if playing from the calip source dir you can:<br/>$ make repl_
 
@@ -45,7 +45,7 @@ Let's pretend we have an app with two functional suspects:
 362880
 ```
 
-Now let's measure them:
+now let's measure them:
 
 ```clojure
 => (require '[calip.core :as calip])
@@ -87,17 +87,17 @@ or remove it from both:
 362880
 ```
 
-## Taming runtime errors
+## taming runtime errors
 
-Most of the time, in case of a runtime error/exception, JVM reports an array of stack trace elements, each representing one stack frame. This array is also known as a stacktrace.
+most of the time, in case of a runtime error/exception, JVM reports an array of stack trace elements, each representing one stack frame. This array is also known as a stacktrace.
 
-While it is immensely useful for tracking down an error scope (i.e. _where_ it happened), it falls short to provide a _state_ snapshot at the time an error occurred: i.e. "what were the arguments passed to a function _at the time_ the error occurred?"
+while it is immensely useful for tracking down an error scope (i.e. _where_ it happened), it falls short to provide a _state_ snapshot at the time an error occurred: i.e. "what were the arguments passed to a function _at the time_ the error occurred?"
 
 `calip` helps tracking down these runtime arguments by setting an "`:on-error?`" flag on a measurement.
 
-### Measuring on error
+### measuring on error
 
-As an example let's take a function that creates a socket (i.e. connects) to external systems:
+as an example let's take a function that creates a socket (i.e. connects) to external systems:
 
 ```clojure
 => (defn connect [{:keys [host port]}]
@@ -116,9 +116,9 @@ java.net.ConnectException: Operation timed out
 java.net.ConnectException: Connection refused
 ```
 
-In case of an error JVM reports an exception but there is no visual on what the arguments were at the time of this exception.
+in case of an error JVM reports an exception but there is no visual on what the arguments were at the time of this exception.
 
-Let's fix it _without a code change_ / on a running application:
+let's fix it _without a code change_ / on a running application:
 
 ```clojure
 => (calip/measure #{#'user/connect} {:on-error? true})
@@ -149,10 +149,10 @@ java.net.ConnectException: Connection refused
 
 > _`:on-error?` flag can be combined with a custom `:report` function that is documented in the next section_
 
-## Reporting
+## reporting
 
-By default calip will use `println` and a "default format" as shown above to report metrics, but it is pluggable.
-You can pass a report function to `calip/measure`. calip would pass a map to this function with:
+by default calip will use `println` and a "default format" as shown above to report metrics, but it is pluggable.<br/>
+you can pass a report function to `calip/measure`. calip would pass a map to this function with:
 
 ```clojure
 {:took took           ;; time this function took to execute in nanoseconds
@@ -161,7 +161,7 @@ You can pass a report function to `calip/measure`. calip would pass a map to thi
  :returned / :error}  ;; a :returned value or an :error [depending on whether the :on-error? flag is set]
 ```
 
-Quite a useful scenario is to use calip to measure or debug parts of the application that writes logs. We can tap into that:
+quite a useful scenario is to use calip to measure or debug parts of the application that writes logs. We can tap into that:
 
 ```clojure
 => (require '[clojure.tools.logging :as log])
@@ -178,7 +178,7 @@ Quite a useful scenario is to use calip to measure or debug parts of the applica
 
 notice we used `(calip/default-format %)` to format that `{:took .., :fname .., :args .., :returned}` map, but you can of course customize it.
 
-### Custom reporting
+### custom reporting
 
 ```clojure
 => (defn create-life [{:keys [galaxy planet]}] "creating life...")
@@ -215,9 +215,9 @@ INFO  user -
 "creating life..."
 ```
 
-### Custom reports on errors
+### custom reports on errors
 
-A custom `:report` function can be combined with an `:on-error?` flag:
+a custom `:report` function can be combined with an `:on-error?` flag:
 
 ```clojure
 user=> (calip/measure #{#'user/connect}
@@ -239,9 +239,9 @@ user=> (rsum "oops")
 INFO  user - "#'user/rsum" args: ("oops") | took: 87,268 nanos | error: java.lang.ClassCastException: java.lang.String cannot be cast to java.lang.Number
 ```
 
-## Match and wrap many functions
+## match and wrap many functions
 
-While profiling applications there are two questions that are very frequent:
+while profiling applications there are two questions that are very frequent:
 
 > out of all these functions what _exactly_ takes so long?
 
@@ -283,7 +283,7 @@ adding hook to #'user/rsum
 
 i.e. it expands `"#'user/*"` into all the `'user` functions currently known to the runtime.
 
-## License
+## license
 
 Copyright © 2021 tolitius
 
