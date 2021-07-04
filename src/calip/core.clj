@@ -70,11 +70,11 @@
       ns-publics
       (->> (map second))))
 
-(defn f-starts-with [with x]
+(defn- f-starts-with [with x]
   (let [[_ f] (-> x str (s/split #"/"))]
     (s/starts-with? f with)))
 
-(defn expand-some-vars [f]
+(defn- expand-some-vars [f]
   (let [[_ fs] (s/split f #"/")        ;; #'foo.bar/baz-* will split as ["#'foo.bar" "baz-*"]
         [prefix _] (s/split fs #"\*")  ;; ["bar-" "*"]
         all-fs (expand-all-vars f)]
