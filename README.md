@@ -11,7 +11,10 @@ measuring and debugging functions on demand _**without**_ a need to alter the co
 - [reporting](#reporting)
   - [custom reporting](#custom-reporting)
   - [custom reports on errors](#custom-reports-on-errors)
+- [µ/trace them!](#%C2%B5trace-them)
+  - [respect the context](#respect-the-context)
 - [match and wrap many functions](#match-and-wrap-many-functions)
+- [license](#license)
 
 ## what does it do?
 
@@ -237,6 +240,126 @@ user=> (calip/measure #{#'user/rsum}
 
 user=> (rsum "oops")
 INFO  user - "#'user/rsum" args: ("oops") | took: 87,268 nanos | error: java.lang.ClassCastException: java.lang.String cannot be cast to java.lang.Number
+```
+
+## µ/trace them!
+
+[µ/log](https://github.com/BrunoBonacci/mulog) is a great logging and tracing lib that can be used with calip instead of custom or built in reporting functions.
+
+besides benefits of picking up µ/log's [context](https://github.com/BrunoBonacci/mulog#use-of-context) it will
+also catch and report exceptions that would include duration and more tasty details.
+
+in order to use µ/log, you would need to start one of the [publishers](https://github.com/BrunoBonacci/mulog#publishers).<br/>
+for this example a console pretty publisher does it:
+
+```clojure
+=> (require '[com.brunobonacci.mulog :as µ])
+
+=> (def pub (µ/start-publisher! {:type :console :pretty? true}))
+#'user/pub
+```
+
+to unleash the beast of [µ/trace](https://github.com/BrunoBonacci/mulog#%CE%BCtrace) inside calip
+specify `{:trace? true}` when measuring:
+
+let's define a couple of functions:
+
+```clojure
+=> (defn rsum [n] (reduce + (range n)))
+#'user/rsum
+=> (defn rmult [n] (reduce *' (range 1 n)))
+#'user/rmult
+```
+
+and measure them with µ/trace:
+
+```clojure
+=> (calip/measure #{#'user/rsum
+                    #'user/rmult} {:trace? true})
+wrapping #'user/rmult
+wrapping #'user/rsum
+
+=> (rsum 10)
+45
+{:mulog/event-name #'user/rsum,
+ :mulog/timestamp 1666232916621,
+ :mulog/trace-id #mulog/flake "4lya-bCcERTK59kyzjZA4nz8HnShdQ2I",
+ :mulog/root-trace #mulog/flake "4lya-bCcERTK59kyzjZA4nz8HnShdQ2I",
+ :mulog/duration 50625,
+ :mulog/namespace "calip.core",
+ :mulog/outcome :ok}
+```
+
+by default calip will use a function name as an `:mulog/event-name`<br/>
+since µ/trace takes a custom `event-name` and `details` (usually a vector of pairs) we can provide them as well:
+
+```clojure
+=> (calip/measure #{#'user/rsum
+                    #'user/rmult} {:trace? true
+                                   :event-name ::find-life
+                                   :details [:foo 42 :bar :zoo]})
+wrapping #'user/rmult
+wrapping #'user/rsum
+
+=> (rsum 10)
+45
+{:mulog/event-name :user/find-life,
+ :mulog/timestamp 1666233276638,
+ :mulog/trace-id #mulog/flake "4lyaKZKpeENgmlDNKVNxcugFp4pem-BJ",
+ :mulog/root-trace #mulog/flake "4lyaKZKpeENgmlDNKVNxcugFp4pem-BJ",
+ :mulog/duration 5684,
+ :mulog/namespace "calip.core",
+ :mulog/outcome :ok,
+ :bar :zoo,
+ :foo 42}
+```
+
+notice `:foo` and `:bar` in a trace, as well as `:mulog/event-name :user/find-life`.
+
+### respect the context
+
+if a global [context](https://github.com/BrunoBonacci/mulog#use-of-context) is set (by the µ/log) before or after measure is called, it will be included in the trace:
+
+```clojure
+=> (µ/set-global-context! {:app-name "sum and mult"
+                           :version "0.1.0"
+                           :env "local"})
+
+user=> (rsum 10)
+45
+{:mulog/event-name :user/find-life,
+ :mulog/timestamp 1666233540292,
+ :mulog/trace-id #mulog/flake "4lyaZuV3b4QjLuE-lHOTvvObz5X0814O",
+ :mulog/root-trace #mulog/flake "4lyaZuV3b4QjLuE-lHOTvvObz5X0814O",
+ :mulog/duration 6651,
+ :mulog/namespace "calip.core",
+ :mulog/outcome :ok,
+ :app-name "sum and mult",
+ :bar :zoo,
+ :env "local",
+ :foo 42,
+ :version "0.1.0"}
+```
+
+same applies for the local context (set by the µ/log) that is set at runtime, after measure was called:
+
+```clojure
+=> (µ/with-context {:who-am-i "calculator"}
+     (rsum 10))
+45
+{:mulog/event-name :user/find-life,
+ :mulog/timestamp 1666233724101,
+ :mulog/trace-id #mulog/flake "4lyajbDBvVfWFZzeo8OkUeBzQxjgHiWY",
+ :mulog/root-trace #mulog/flake "4lyajbDBvVfWFZzeo8OkUeBzQxjgHiWY",
+ :mulog/duration 199814,
+ :mulog/namespace "calip.core",
+ :mulog/outcome :ok,
+ :app-name "sum and mult",
+ :bar :zoo,
+ :env "local",
+ :foo 42,
+ :version "0.1.0",
+ :who-am-i "calculator"}
 ```
 
 ## match and wrap many functions

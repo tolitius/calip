@@ -4,7 +4,7 @@
   <packaging>jar</packaging>
   <groupId>tolitius</groupId>
   <artifactId>calip</artifactId>
-  <version>0.1.8</version>
+  <version>0.1.9</version>
   <name>calip</name>
   <description>measuring and debugging functions on demand without a need to alter the code</description>
   <url>https://github.com/tolitius/calip</url>
@@ -29,13 +29,18 @@
     <dependency>
       <groupId>org.clojure</groupId>
       <artifactId>clojure</artifactId>
-      <version>1.10.3</version>
+      <version>1.11.1</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>robert</groupId>
       <artifactId>hooke</artifactId>
       <version>1.3.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.brunobonacci</groupId>
+      <artifactId>mulog</artifactId>
+      <version>0.9.0</version>
     </dependency>
   </dependencies>
   <build>

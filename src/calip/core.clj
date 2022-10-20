@@ -1,5 +1,6 @@
 (ns calip.core
   (:require [clojure.string :as s]
+            [com.brunobonacci.mulog :as u]
             [robert.hooke :as hooke]))
 
 (defn default-format [{:keys [fname took args returned error]}]
@@ -100,6 +101,16 @@
   [fs]
   (set (mapcat f-to-fs fs)))
 
+(defn- trace [ename details fun]
+  (u/trace ename details fun))
+
+(defn- make-trace [{:keys [event-name details]
+                    :or {details []}}
+                   fun-name
+                   f & args]
+  (trace (or event-name
+             fun-name) details (apply f args)))
+
 (defn measure
   "takes a set of functions (namespace vars) with 'optional options'
    and wraps them with timers.
@@ -108,13 +119,31 @@
                         or
         (measure #{#'app/foo #'app/bar} {:report log/info})
 
+  it would also take a \":trace?\" option which would delegate tracing to µ/trace
+  (https://github.com/BrunoBonacci/mulog#%CE%BCtrace)
+  in which case both :event-name and :details can be specified:
+
+  => (measure #{#'user/rsum
+              #'user/rmult} {:trace? true
+                             :event-name ::find-life
+                             :details [:foo 42 :bar :zoo]})
+
+  in case :event-name and/or :details not provided,
+  it'll default to empty :details and a function name as an :event-name
+
+  => (measure #{#'user/rsum
+                #'user/rmult} {:trace? true})
+
   by default 'measure' will use 'println' to report times functions took"
   ([fs]
    (measure fs {}))
-  ([fs {:keys [on-error?] :as opts}]
-   (let [m-fn (if on-error?
-                on-error
-                calip)]
+  ([fs {:keys [on-error? trace?]
+        :or {details []}
+        :as opts}]
+   (let [m-fn (cond
+                on-error? on-error
+                trace? make-trace
+                :else calip)]
      (doseq [f (unwrap-stars fs)]
        (let [fvar (f-to-var f)]
          (println "wrapping" fvar)
