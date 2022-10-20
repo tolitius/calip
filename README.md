@@ -290,7 +290,7 @@ wrapping #'user/rsum
  :mulog/outcome :ok}
 ```
 
-by default calip will use a function name as an `:mulog/event-name`<br/>
+by default calip will use a function name as a `:mulog/event-name`<br/>
 since µ/trace takes a custom `event-name` and `details` (usually a vector of pairs) we can provide them as well:
 
 ```clojure
