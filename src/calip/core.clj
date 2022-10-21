@@ -110,15 +110,50 @@
   [fs]
   (set (mapcat f-to-fs fs)))
 
-(defn- trace [ename details fun]
-  (u/trace ename details fun))
+(defn- pairs-with-args [{:keys [pairs format-args]}
+                        args]
+  (if-not format-args
+    pairs
+    (->> [:args (format-args args)]
+         (apply merge pairs))))
 
-(defn- make-trace [{:keys [event-name details]
-                    :or {details []}}
+(defn- make-trace [{:keys [event-name]
+                    :as opts}
                    fun-name
                    f & args]
-  (trace (or event-name
-             (var->keyword fun-name)) details (apply f args)))
+  (let [pairs (pairs-with-args opts args)
+        mops (-> (dissoc opts :format-args
+                              :event-name)
+                 (assoc :pairs pairs))]
+    (u/trace (or event-name
+                 (var->keyword fun-name))
+             mops
+             (apply f args))))
+
+(defn trace
+  "takes a set of functions (namespace vars) with 'optional options'
+   and wraps them µ/trace (https://github.com/BrunoBonacci/mulog#%CE%BCtrace)
+
+   => (trace #{#'user/rsum
+               #'user/rmult})
+
+   in case µ/trace options are not provided, but the can be
+
+  => (trace #{#'user/rsum
+              #'user/rmult} {:pairs [:moo :zoo]               ;; standard µ/trace :pairs
+                             :capture (fn [x] {:x-is x})      ;; ----- || ------- :capture
+                             :format-args (comp s/upper-case  ;; if provided will also format and add input args to pairs
+                                                str
+                                                first)}}))"
+  ([fs]
+   (trace fs {}))
+  ([fs opts]
+     (doseq [f (unwrap-stars fs)]
+       (let [fvar (f-to-var f)]
+         (println "wrapping" fvar "in µ/trace")
+         (hooke/add-hook fvar                                ;; target var
+                         (str fvar)                          ;; hooke key
+                         (partial make-trace opts fvar))))))
 
 (defn measure
   "takes a set of functions (namespace vars) with 'optional options'
@@ -128,30 +163,12 @@
                         or
         (measure #{#'app/foo #'app/bar} {:report log/info})
 
-  it would also take a \":trace?\" option which would delegate tracing to µ/trace
-  (https://github.com/BrunoBonacci/mulog#%CE%BCtrace)
-  in which case both :event-name and :details can be specified:
-
-  => (measure #{#'user/rsum
-              #'user/rmult} {:trace? true
-                             :event-name ::find-life
-                             :details [:foo 42 :bar :zoo]})
-
-  in case :event-name and/or :details not provided,
-  it'll default to empty :details and a function name as an :event-name
-
-  => (measure #{#'user/rsum
-                #'user/rmult} {:trace? true})
-
   by default 'measure' will use 'println' to report times functions took"
   ([fs]
    (measure fs {}))
-  ([fs {:keys [on-error? trace?]
-        :or {details []}
-        :as opts}]
+  ([fs {:keys [on-error?] :as opts}]
    (let [m-fn (cond
                 on-error? on-error
-                trace? make-trace
                 :else calip)]
      (doseq [f (unwrap-stars fs)]
        (let [fvar (f-to-var f)]
@@ -167,3 +184,8 @@
     (hooke/clear-hooks
       (f-to-var f))
     (println "remove a wrapper from" f)))
+
+(defn untrace [fs]
+  "takes a set of functions (namespace vars) and removes µ/trace from them.
+   i.e. (untrace #{#'app/foo #'app/bar})"
+  (uncalip fs))

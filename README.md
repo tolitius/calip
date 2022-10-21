@@ -12,13 +12,14 @@ measuring and debugging functions on demand _**without**_ a need to alter the co
   - [custom reporting](#custom-reporting)
   - [custom reports on errors](#custom-reports-on-errors)
 - [µ/trace them!](#%C2%B5trace-them)
+  - [input arguments](#input-arguments)
   - [respect the context](#respect-the-context)
 - [match and wrap many functions](#match-and-wrap-many-functions)
 - [license](#license)
 
 ## what does it do?
 
-calip _measures_ and _debugs_ functions on demand, or in case of an error, _**without**_ a need to alter the code.
+calip _measures_ ,_traces_, and _debugs_ functions on demand, or in case of an error, _**without**_ a need to alter the code.
 
 it does so by adding an AOP around advice (i.e. a weaved timer function wrapper) with [robert hooke](https://github.com/technomancy/robert-hooke)
 
@@ -259,8 +260,7 @@ for this example a console pretty publisher does it:
 #'user/pub
 ```
 
-to unleash the beast of [µ/trace](https://github.com/BrunoBonacci/mulog#%CE%BCtrace) inside calip
-specify `{:trace? true}` when measuring:
+and now unleash the beast of [µ/trace](https://github.com/BrunoBonacci/mulog#%CE%BCtrace) with the `calip/trace` function.
 
 let's define a couple of functions:
 
@@ -271,50 +271,96 @@ let's define a couple of functions:
 #'user/rmult
 ```
 
-and measure them with µ/trace:
+and trace them without them knowing (i.e. wrap them in µ/trace):
 
 ```clojure
-=> (calip/measure #{#'user/rsum
-                    #'user/rmult} {:trace? true})
-wrapping #'user/rmult
-wrapping #'user/rsum
+=> (calip/trace #{#'user/rsum
+                  #'user/rmult})
+wrapping #'user/rsum in µ/trace
+wrapping #'user/rmult in µ/trace
 
 => (rsum 10)
 45
-{:mulog/event-name #'user/rsum,
- :mulog/timestamp 1666232916621,
- :mulog/trace-id #mulog/flake "4lya-bCcERTK59kyzjZA4nz8HnShdQ2I",
- :mulog/root-trace #mulog/flake "4lya-bCcERTK59kyzjZA4nz8HnShdQ2I",
- :mulog/duration 50625,
+{:mulog/event-name :user/rsum,
+ :mulog/timestamp 1666377944748,
+ :mulog/trace-id #mulog/flake "4m-duM3W-Trkqocc7kDcxlHbhDwPPn5l",
+ :mulog/root-trace #mulog/flake "4m-duM3W-Trkqocc7kDcxlHbhDwPPn5l",
+ :mulog/duration 53261,
  :mulog/namespace "calip.core",
  :mulog/outcome :ok}
 ```
 
-by default calip will use a function name as a `:mulog/event-name`<br/>
-since µ/trace takes a custom `event-name` and `details` (usually a vector of pairs) we can provide them as well:
+by default calip will use a function name for a `:mulog/event-name` key<br/>
+since `µ/trace` takes a custom event name and other options, such as `:pairs`, `:capture`, etc..<br/>
+we can pass all of it in a map of options:
 
 ```clojure
-=> (calip/measure #{#'user/rsum
-                    #'user/rmult} {:trace? true
-                                   :event-name ::find-life
-                                   :details [:foo 42 :bar :zoo]})
-wrapping #'user/rmult
-wrapping #'user/rsum
+=> (calip/trace #{#'user/rsum
+                  #'user/rmult} {:event-name ::calculator
+                                 :pairs [:foo 42 :bar :zoo]
+                                 :capture (fn [result] {:result-is result})})
+wrapping #'user/rsum in µ/trace
+wrapping #'user/rmult in µ/trace
 
-=> (rsum 10)
-45
-{:mulog/event-name :user/find-life,
- :mulog/timestamp 1666233276638,
- :mulog/trace-id #mulog/flake "4lyaKZKpeENgmlDNKVNxcugFp4pem-BJ",
- :mulog/root-trace #mulog/flake "4lyaKZKpeENgmlDNKVNxcugFp4pem-BJ",
- :mulog/duration 5684,
+=> (rmult 42)
+33452526613163807108170062053440751665152000000000N
+{:mulog/event-name :user/calculator,
+ :mulog/timestamp 1666378105154,
+ :mulog/trace-id #mulog/flake "4m-e2gb3DA5xsFXSLRUHLnypQGyQXELt",
+ :mulog/root-trace #mulog/flake "4m-e2gb3DA5xsFXSLRUHLnypQGyQXELt",
+ :mulog/duration 405866,
  :mulog/namespace "calip.core",
  :mulog/outcome :ok,
  :bar :zoo,
- :foo 42}
+ :foo 42,
+ :result-is 33452526613163807108170062053440751665152000000000N}
 ```
 
-notice `:foo` and `:bar` in a trace, as well as `:mulog/event-name :user/find-life`.
+notice:
+
+* `:foo` and `:bar` in a trace from :pairs
+* `:mulog/event-name` is `:user/calculator`
+* and the result is captured in `:result-is`
+
+---
+we can remove traces by `calip/untrace`:
+
+```clojure
+;; removing previous µ/trace(s):
+=> (calip/untrace #{#'user/rsum #'user/rmult})
+remove a wrapper from #'user/rsum
+remove a wrapper from #'user/rmult
+```
+
+
+### input arguments
+
+`calip/trace` can also take a `:format-args` option that, if provided, would format and add a function input arguments to the trace:
+
+```clojure
+=> (calip/trace #{#'user/rsum
+                  #'user/rmult} {:format-args #(->> % first (str "meaning of life universe and everything: "))
+                                 :pairs [:foo 42 :bar :zoo]
+                                 :capture (fn [result] {:result-is result})})
+wrapping #'user/rsum in µ/trace
+wrapping #'user/rmult in µ/trace
+
+=> (rmult 42)
+33452526613163807108170062053440751665152000000000N
+{:mulog/event-name :user/rmult,
+ :mulog/timestamp 1666378492125,
+ :mulog/trace-id #mulog/flake "4m-ePDEGgMb2Xq3PH-9C6FIUu2R37djV",
+ :mulog/root-trace #mulog/flake "4m-ePDEGgMb2Xq3PH-9C6FIUu2R37djV",
+ :mulog/duration 324314,
+ :mulog/namespace "calip.core",
+ :mulog/outcome :ok,
+ :args "meaning of life universe and everything: 42",
+ :bar :zoo,
+ :foo 42,
+ :result-is 33452526613163807108170062053440751665152000000000N}
+```
+
+notice the `:args` key 👆 in the trace, it reveals the meaning.
 
 ### respect the context
 
