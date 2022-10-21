@@ -1,6 +1,6 @@
 # calip(er)
 
-measuring and debugging functions on demand _**without**_ a need to alter the code
+measuring, tracing and debugging functions on demand _**without**_ a need to alter the code
 
 [![Clojars Project](http://clojars.org/tolitius/calip/latest-version.svg)](http://clojars.org/tolitius/calip)
 
@@ -19,17 +19,17 @@ measuring and debugging functions on demand _**without**_ a need to alter the co
 
 ## what does it do?
 
-calip _measures_ ,_traces_, and _debugs_ functions on demand, or in case of an error, _**without**_ a need to alter the code.
-
-it does so by adding an AOP around advice (i.e. a weaved timer function wrapper) with [robert hooke](https://github.com/technomancy/robert-hooke)
+calip _measures_, _traces_, and _debugs_ functions on demand, or in case of an error..<br/>
+:sunglasses: _**without**_ a need to alter the code
 
 it comes really handy at development time, as well as for deployed applications:
 
 * when you need _on demand_ performance metrics with runtime arguments
+* when you need to trace a sequence of functions called
 * when you need to see the actual runtime function arguments in case of an error
 * when you need to see the actual runtime function arguments as the program is running
 
-in which case you can just connect to a deployed application via an `nREPL`, and add measurements, handlers, logs to _any_ "functional suspect".
+in which case you can just connect to a deployed application via an `nREPL`, and add measurements, traces, logs to _any_ :mag_right: "functional suspect".
 
 ## performance on demand
 
@@ -271,7 +271,7 @@ let's define a couple of functions:
 #'user/rmult
 ```
 
-and trace them without them knowing (i.e. wrap them in µ/trace):
+and trace'em without them knowing (i.e. :gift: wrap them in µ/trace):
 
 ```clojure
 => (calip/trace #{#'user/rsum
@@ -318,7 +318,7 @@ wrapping #'user/rmult in µ/trace
 
 notice:
 
-* `:foo` and `:bar` in a trace from :pairs
+* `:foo` and `:bar` in a trace from `:pairs`
 * `:mulog/event-name` is `:user/calculator`
 * and the result is captured in `:result-is`
 
