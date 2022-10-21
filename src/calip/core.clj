@@ -51,6 +51,15 @@
        (apply str)
        symbol))
 
+(defn- var->keyword
+  "will convert var (i.e. #'app.foo/bar)
+   to a keyword :app.foo/bar"
+  [v]
+  (->> v
+       var->str->symbol
+       str
+       keyword))
+
 (defn- f-to-var
   "makes sure a function 'f' is a resolvable var
    returns the resolved var
@@ -109,7 +118,7 @@
                    fun-name
                    f & args]
   (trace (or event-name
-             fun-name) details (apply f args)))
+             (var->keyword fun-name)) details (apply f args)))
 
 (defn measure
   "takes a set of functions (namespace vars) with 'optional options'
