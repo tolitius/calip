@@ -14,6 +14,7 @@ measuring, tracing and debugging functions on demand _**without**_ a need to alt
 - [µ/trace them!](#%C2%B5trace-them)
   - [input arguments](#input-arguments)
   - [respect the context](#respect-the-context)
+  - [reveal the beauty](#reveal-the-beauty)
 - [match and wrap many functions](#match-and-wrap-many-functions)
 - [license](#license)
 
@@ -407,6 +408,62 @@ same applies for the local context (set by the µ/log) that is set at runtime, a
  :version "0.1.0",
  :who-am-i "calculator"}
 ```
+
+### reveal the beauty
+
+since functions can be traced with calip without them knowing it we can hook into any application and create beautiful visuals.
+
+this example uses [zipkin](https://github.com/BrunoBonacci/mulog/tree/master/mulog-zipkin), but any tracing visual tool (grafana, jaeger, sleuth, kibana, etc.) can be used.
+
+let's binge the [Star Wars episodes](dev/star_wars.clj) and see how long it would take us:
+
+```clojure
+=> (require '[com.brunobonacci.mulog :as μ]
+            '[calip.core :as c]
+            '[star-wars])
+
+;; starting a different publisher that would send µ/trace output to zipkin
+=> (μ/start-publisher!  {:type :zipkin
+                         :url  "http://localhost:9411/"})
+```
+
+this example is contrived on purpose, usually it'd be something like "`#'foo.bar/find-*`" or "`#'foo.bar/baz`":
+
+```clojure
+=> (c/trace #{"#'star-wars/the-*"
+              "#'star-wars/re*"
+              "#'star-wars/a*"
+              #'star-wars/one-offs
+              #'star-wars/rogue-one
+              #'star-wars/solo
+              #'star-wars/binge})
+
+wrapping #'star-wars/one-offs in µ/trace
+wrapping #'star-wars/rogue-one in µ/trace
+wrapping #'star-wars/the-force-awakens in µ/trace
+wrapping #'star-wars/the-rise-of-skywalker in µ/trace
+wrapping #'star-wars/a-new-hope in µ/trace
+wrapping #'star-wars/attack-of-the-clones in µ/trace
+wrapping #'star-wars/binge in µ/trace
+wrapping #'star-wars/the-phantom-menace in µ/trace
+wrapping #'star-wars/the-empire-strikes-back in µ/trace
+wrapping #'star-wars/return-of-the-jedi in µ/trace
+wrapping #'star-wars/solo in µ/trace
+wrapping #'star-wars/the-last-jedi in µ/trace
+wrapping #'star-wars/revenge-of-the-sith in µ/trace
+```
+
+ready to binge? let's do it!
+
+```clojure
+=> (star-wars/binge)
+```
+
+![zipkin trace](doc/img/binge-starwars.png)
+
+beauty unlocked :nerd_face:
+
+all these Star Wars characters play a role of different "applications".
 
 ## match and wrap many functions
 
