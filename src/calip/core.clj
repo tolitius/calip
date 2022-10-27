@@ -115,7 +115,7 @@
   (if-not format-args
     pairs
     (->> [:args (format-args args)]
-         (apply merge pairs))))
+         (apply merge (or pairs [])))))
 
 (defn- make-trace [{:keys [event-name]
                     :as opts}
