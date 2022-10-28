@@ -153,7 +153,8 @@
          (println "wrapping" fvar "in µ/trace")
          (hooke/add-hook fvar                                ;; target var
                          (str fvar)                          ;; hooke key
-                         (partial make-trace opts fvar))))))
+                         (partial make-trace opts fvar))))
+     (unwrap-stars fs)))
 
 (defn measure
   "takes a set of functions (namespace vars) with 'optional options'
@@ -175,7 +176,8 @@
          (println "wrapping" fvar)
          (hooke/add-hook fvar                             ;; target var
                          (str fvar)                       ;; hooke key
-                         (partial m-fn opts fvar)))))))   ;; wrapper
+                         (partial m-fn opts fvar)))))     ;; wrapper
+   (unwrap-stars fs)))
 
 (defn uncalip [fs]
   "takes a set of functions (namespace vars) and removes times from them.

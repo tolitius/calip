@@ -4,7 +4,7 @@
   <packaging>jar</packaging>
   <groupId>tolitius</groupId>
   <artifactId>calip</artifactId>
-  <version>0.1.11</version>
+  <version>0.1.12</version>
   <name>calip</name>
   <description>measuring and debugging functions on demand without a need to alter the code</description>
   <url>https://github.com/tolitius/calip</url>
