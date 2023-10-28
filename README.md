@@ -511,7 +511,7 @@ i.e. it expands `"#'user/*"` into all the `'user` functions currently known to t
 
 ## license
 
-Copyright © 2021 tolitius
+Copyright © 2023 tolitius
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.
