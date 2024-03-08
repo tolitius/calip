@@ -114,8 +114,11 @@
                         args]
   (if-not format-args
     pairs
-    (->> [:args (format-args args)]
-         (apply merge (or pairs [])))))
+    (let [fargs (format-args args)]
+      (->> (if (map? fargs)
+             (into [] cat fargs)            ;; {:a 42 :b 34} => [:a 42 :b 34]
+             [:args (format-args args)])
+           (apply merge (or pairs []))))))
 
 (defn- make-trace [{:keys [event-name]
                     :as opts}
