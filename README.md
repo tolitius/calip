@@ -363,6 +363,50 @@ wrapping #'user/rmult in µ/trace
 
 notice the `:args` key 👆 in the trace, it reveals the meaning.
 
+#### separate tags for arguments
+
+by default the "`format-args`" function records all the arguments under "`:args`" in the trace.<br/>
+however, if it returns **a map**, keys of this map are recorded _separately_ in a trace<br/>
+similar to dynamic values in "pairs":
+
+```clojure
+=> (defn stargaze [constellation system star]
+     (print "looking at stars.."))
+```
+
+```clojure
+=> (calip/trace [#'user/stargaze] {:format-args (fn [[c cs s]]
+                                                  {:arg/constellation c
+                                                   :arg/system cs
+                                                   :arg/star s})})
+```
+
+> _they don't need to be prefixed/namespaced with "`arg/`", this is just to visually group them together_
+
+```clojure
+=> (stargaze "centaurus" "alpha centauri" "toliman")
+nil
+looking at stars..
+{:mulog/event-name :user/stargaze,
+ :mulog/timestamp 1709917686018,
+ :mulog/trace-id #mulog/flake "4ves6lMDdexpjqZ1h8pkiAYWw0f0FEda",
+ :mulog/root-trace #mulog/flake "4ves6lMDdexpjqZ1h8pkiAYWw0f0FEda",
+ :mulog/duration 39702,
+ :mulog/namespace "calip.core",
+ :mulog/outcome :ok,
+
+ ;; here they are
+
+ :arg/constellation "centaurus",
+ :arg/star "toliman",
+ :arg/system "alpha centauri"}
+```
+
+plug these values directly into James Webb Space Telescope, and...
+
+<img src="https://github.com/tolitius/calip/assets/136575/f88339b1-b7da-4408-84d6-1b8936898cde" width="500px"/>
+
+
 ### respect the context
 
 if a global [context](https://github.com/BrunoBonacci/mulog#use-of-context) is set (by the µ/log) before or after measure is called, it will be included in the trace:
@@ -511,7 +555,7 @@ i.e. it expands `"#'user/*"` into all the `'user` functions currently known to t
 
 ## license
 
-Copyright © 2023 tolitius
+Copyright © 2024 tolitius
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.
