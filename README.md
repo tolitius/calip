@@ -363,7 +363,7 @@ wrapping #'user/rmult in µ/trace
 
 notice the `:args` key 👆 in the trace, it reveals the meaning.
 
-#### separate tags for arguments
+#### separate keys for arguments
 
 by default the "`format-args`" function records all the arguments under "`:args`" in the trace.<br/>
 however, if it returns **a map**, keys of this map are recorded _separately_ in a trace<br/>
