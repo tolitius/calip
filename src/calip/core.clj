@@ -151,13 +151,13 @@
   ([fs]
    (trace fs {}))
   ([fs opts]
-     (doseq [f (unwrap-stars fs)]
-       (let [fvar (f-to-var f)]
-         (println "wrapping" fvar "in µ/trace")
-         (hooke/add-hook fvar                                ;; target var
-                         (str fvar)                          ;; hooke key
-                         (partial make-trace opts fvar))))
-     (unwrap-stars fs)))
+   (doseq [f (unwrap-stars fs)]
+     (let [fvar (f-to-var f)]
+       (println "wrapping" fvar "in µ/trace")
+       (hooke/add-hook fvar                                ;; target var
+                       (str fvar)                          ;; hooke key
+                       (partial make-trace opts fvar))))
+   (unwrap-stars fs)))
 
 (defn measure
   "takes a set of functions (namespace vars) with 'optional options'
