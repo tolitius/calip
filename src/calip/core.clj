@@ -3,6 +3,8 @@
             [com.brunobonacci.mulog :as u]
             [robert.hooke :as hooke]))
 
+(def ^:dynamic *silent* false)
+
 (defn default-format [{:keys [fname took args returned error]}]
   (if-not error
     (format "\"%s\" args: %s | took: %,d nanos | returned: %s"
@@ -11,7 +13,8 @@
             fname args took error)))
 
 (defn default-report [results]
-  (println (default-format results)))
+  (when-not *silent*
+    (println (default-format results))))
 
 (defn- calip [{:keys [report]
                :or {report default-report}} fname f & args]
@@ -153,7 +156,8 @@
   ([fs opts]
    (doseq [f (unwrap-stars fs)]
      (let [fvar (f-to-var f)]
-       (println "wrapping" fvar "in µ/trace")
+       (when-not *silent*
+         (println "wrapping" fvar "in µ/trace"))
        (hooke/add-hook fvar                                ;; target var
                        (str fvar)                          ;; hooke key
                        (partial make-trace opts fvar))))
@@ -176,7 +180,8 @@
                 :else calip)]
      (doseq [f (unwrap-stars fs)]
        (let [fvar (f-to-var f)]
-         (println "wrapping" fvar)
+         (when-not *silent*
+           (println "wrapping" fvar))
          (hooke/add-hook fvar                             ;; target var
                          (str fvar)                       ;; hooke key
                          (partial m-fn opts fvar)))))     ;; wrapper
@@ -188,7 +193,8 @@
   (doseq [f (unwrap-stars fs)]
     (hooke/clear-hooks
       (f-to-var f))
-    (println "remove a wrapper from" f)))
+    (when-not *silent*
+      (println "remove a wrapper from" f))))
 
 (defn untrace [fs]
   "takes a set of functions (namespace vars) and removes µ/trace from them.
