@@ -215,6 +215,12 @@
     (when-not *silent*
       (println "remove a wrapper from" f))))
 
+(defn uncalip-all
+  "Looks through all loaded functions (namespace vars) and removes
+   any trace or measure from them. "
+  []
+  (uncalip (wrapped)))
+
 (defn untrace [fs]
   "takes a set of functions (namespace vars) and removes µ/trace from them.
    i.e. (untrace #{#'app/foo #'app/bar})"
