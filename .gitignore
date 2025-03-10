@@ -18,3 +18,4 @@ doo-index.html
 /.nrepl-history
 .cljs_rhino_repl/
 out/
+.DS_Store

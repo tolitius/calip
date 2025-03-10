@@ -92,6 +92,13 @@ or remove it from both:
 362880
 ```
 
+> _alternitevely all functions that are wrapped via calip can be removed with:_
+> ```clojure
+> => (calip/uncalip (calip/wrapped))
+> remove a wrapper from #'user/rmult
+> remove a wrapper from #'user/rsum
+> ```
+
 ## taming runtime errors
 
 most of the time, in case of a runtime error/exception, JVM reports an array of stack trace elements, each representing one stack frame. This array is also known as a stacktrace.

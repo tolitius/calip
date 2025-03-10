@@ -5,6 +5,20 @@
 
 (def ^:dynamic *silent* false)
 
+(def ^:private measured
+  (atom #{}))
+
+(defn- record [fs]
+  (swap! measured
+         #(apply conj % fs)))
+
+(defn- retract [fs]
+  (swap! measured
+         #(apply disj % fs)))
+
+(defn wrapped []
+  @measured)
+
 (defn default-format [{:keys [fname took args returned error]}]
   (if-not error
     (format "\"%s\" args: %s | took: %,d nanos | returned: %s"
@@ -154,14 +168,16 @@
   ([fs]
    (trace fs {}))
   ([fs opts]
-   (doseq [f (unwrap-stars fs)]
-     (let [fvar (f-to-var f)]
-       (when-not *silent*
-         (println "wrapping" fvar "in µ/trace"))
-       (hooke/add-hook fvar                                ;; target var
-                       (str fvar)                          ;; hooke key
-                       (partial make-trace opts fvar))))
-   (unwrap-stars fs)))
+   (let [funs (unwrap-stars fs)]
+     (doseq [f funs]
+       (let [fvar (f-to-var f)]
+         (when-not *silent*
+           (println "wrapping" fvar "in µ/trace"))
+         (hooke/add-hook fvar                                ;; target var
+                         (str fvar)                          ;; hooke key
+                         (partial make-trace opts fvar))
+         (record [f])))
+     funs)))
 
 (defn measure
   "takes a set of functions (namespace vars) with 'optional options'
@@ -177,15 +193,17 @@
   ([fs {:keys [on-error?] :as opts}]
    (let [m-fn (cond
                 on-error? on-error
-                :else calip)]
-     (doseq [f (unwrap-stars fs)]
+                :else calip)
+         funs (unwrap-stars fs)]
+     (doseq [f funs]
        (let [fvar (f-to-var f)]
          (when-not *silent*
            (println "wrapping" fvar))
          (hooke/add-hook fvar                             ;; target var
                          (str fvar)                       ;; hooke key
-                         (partial m-fn opts fvar)))))     ;; wrapper
-   (unwrap-stars fs)))
+                         (partial m-fn opts fvar))        ;; wrapper
+         (record [f])))
+     funs)))
 
 (defn uncalip [fs]
   "takes a set of functions (namespace vars) and removes times from them.
@@ -193,6 +211,7 @@
   (doseq [f (unwrap-stars fs)]
     (hooke/clear-hooks
       (f-to-var f))
+    (retract [f])
     (when-not *silent*
       (println "remove a wrapper from" f))))
 
