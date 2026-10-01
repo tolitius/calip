@@ -6,17 +6,24 @@
 (def ^:dynamic *silent* false)
 
 (def ^:private measured
-  (atom #{}))
+  (atom {}))  ;; {#'app/foo #{:measure :trace ...}}
 
-(defn- record [fs]
+(defn- record [fvar id]
   (swap! measured
-         #(apply conj % fs)))
+         update fvar (fnil conj #{}) id))
 
-(defn- retract [fs]
+(defn- retract [fvar id]
   (swap! measured
-         #(apply disj % fs)))
+         (fn [m]
+           (let [ids (disj (get m fvar #{}) id)]
+             (if (seq ids)
+               (assoc m fvar ids)
+               (dissoc m fvar))))))
 
-(defn wrapped []
+(defn wrapped
+  "returns all the functions wrapped by calip with ids of their wrappers
+   => {#'user/rsum #{:measure :trace}}"
+  []
   @measured)
 
 (defn default-format [{:keys [fname took args returned error]}]
@@ -30,10 +37,11 @@
   (when-not *silent*
     (println (default-format results))))
 
-(defn- calip [{:keys [report]
-               :or {report default-report}} fname f & args]
+(defn- calip
   "wraps a function call with a timer: i.e. that times the function execution
    and reports the result"
+  [{:keys [report]
+    :or {report default-report}} fname f & args]
   (let [start (System/nanoTime)
         v (apply f args)
         took (- (System/nanoTime) start)]
@@ -43,11 +51,12 @@
              :returned v})
     v))
 
-(defn- on-error [{:keys [report]
-                  :or {report default-report}} fname f & args]
+(defn- on-error
   "wraps a function call in a try/catch with a timer
-  in case of na error reports a runtime function state (i.e. arguments)
-  and how long the function execution took"
+   in case of an error reports a runtime function state (i.e. arguments)
+   and how long the function execution took"
+  [{:keys [report]
+    :or {report default-report}} fname f & args]
   (let [start (System/nanoTime)]
     (try
       (apply f args)
@@ -125,7 +134,15 @@
 (defn- unwrap-stars
   "unwraps the stars: #'foo.bar/* to a set of all functions in that namespace"
   [fs]
-  (set (mapcat f-to-fs fs)))
+  (set (mapcat f-to-fs (if (map? fs)          ;; i.e. (calip/wrapped)
+                         (keys fs)
+                         fs))))
+
+(defn- wrappable?
+  "only functions can be wrapped: not values, macros, multimethods, etc."
+  [fvar]
+  (and (fn? @fvar)
+       (not (:macro (meta fvar)))))
 
 (defn- pairs-with-args [{:keys [pairs format-args]}
                         args]
@@ -150,6 +167,61 @@
              mops
              (apply f args))))
 
+(defn wrap
+  "takes a set of functions (namespace vars) and wraps them in an 'advice' function
+   that is called _instead_ of the function with the function name (var),
+   the function itself and its arguments: (fn [fname f & args] ...)
+
+   it is up to the 'advice' to call (or not to call) the function:
+
+   => (wrap #{#'user/rsum}
+            (fn [fname f & args]
+              (println \"calling\" fname \"with\" args)
+              (apply f args)))
+
+   a function can be wrapped many times as long as wrappers have different ids.
+   by default an id is :wrap, but it can be provided:
+
+   => (wrap #{#'user/rsum} retry {:id :retry})"
+  ([fs advice]
+   (wrap fs advice {}))
+  ([fs advice {:keys [id]
+               :or {id :wrap}}]
+   (let [fvars (->> (unwrap-stars fs)
+                    (map f-to-var)
+                    (filter (fn [fvar]
+                              (or (wrappable? fvar)
+                                  (when-not *silent*
+                                    (println "skipping" fvar "since it is not a function"))))))]
+     (doseq [fvar fvars]
+       (when-not *silent*
+         (println "wrapping" fvar "in" id))
+       (hooke/add-hook fvar                       ;; target var
+                       [::calip id]               ;; hooke key
+                       (partial advice fvar))     ;; wrapper
+       (record fvar id))
+     (set fvars))))
+
+(defn unwrap
+  "takes a set of functions (namespace vars) and removes calip wrappers from them.
+   if an :id is provided, only removes a wrapper with this id
+
+   i.e. (unwrap #{#'app/foo #'app/bar})
+        (unwrap #{#'app/foo #'app/bar} {:id :retry})
+        (unwrap (wrapped))"
+  ([fs]
+   (unwrap fs {}))
+  ([fs {:keys [id]}]
+   (doseq [fvar (map f-to-var (unwrap-stars fs))
+           :let [ids (get @measured fvar #{})]
+           wid (if id
+                 (filter ids [id])
+                 ids)]
+     (hooke/remove-hook fvar [::calip wid])
+     (retract fvar wid)
+     (when-not *silent*
+       (println "remove" wid "wrapper from" fvar)))))
+
 (defn trace
   "takes a set of functions (namespace vars) with 'optional options'
    and wraps them µ/trace (https://github.com/BrunoBonacci/mulog#%CE%BCtrace)
@@ -167,17 +239,10 @@
                                                 first)}}))"
   ([fs]
    (trace fs {}))
-  ([fs opts]
-   (let [funs (unwrap-stars fs)]
-     (doseq [f funs]
-       (let [fvar (f-to-var f)]
-         (when-not *silent*
-           (println "wrapping" fvar "in µ/trace"))
-         (hooke/add-hook fvar                                ;; target var
-                         (str fvar)                          ;; hooke key
-                         (partial make-trace opts fvar))
-         (record [f])))
-     funs)))
+  ([fs {:keys [id] :as opts}]
+   (wrap fs
+         (partial make-trace (dissoc opts :id))
+         {:id (or id :trace)})))
 
 (defn measure
   "takes a set of functions (namespace vars) with 'optional options'
@@ -190,32 +255,19 @@
   by default 'measure' will use 'println' to report times functions took"
   ([fs]
    (measure fs {}))
-  ([fs {:keys [on-error?] :as opts}]
-   (let [m-fn (cond
-                on-error? on-error
-                :else calip)
-         funs (unwrap-stars fs)]
-     (doseq [f funs]
-       (let [fvar (f-to-var f)]
-         (when-not *silent*
-           (println "wrapping" fvar))
-         (hooke/add-hook fvar                             ;; target var
-                         (str fvar)                       ;; hooke key
-                         (partial m-fn opts fvar))        ;; wrapper
-         (record [f])))
-     funs)))
+  ([fs {:keys [on-error? id] :as opts}]
+   (wrap fs
+         (partial (if on-error? on-error calip) opts)
+         {:id (or id :measure)})))
 
-(defn uncalip [fs]
-  "takes a set of functions (namespace vars) and removes times from them.
+(defn uncalip
+  "takes a set of functions (namespace vars) and removes all calip wrappers from them.
    i.e. (uncalip #{#'app/foo #'app/bar})"
-  (doseq [f (unwrap-stars fs)]
-    (hooke/clear-hooks
-      (f-to-var f))
-    (retract [f])
-    (when-not *silent*
-      (println "remove a wrapper from" f))))
+  [fs]
+  (unwrap fs))
 
-(defn untrace [fs]
+(defn untrace
   "takes a set of functions (namespace vars) and removes µ/trace from them.
    i.e. (untrace #{#'app/foo #'app/bar})"
-  (uncalip fs))
+  [fs]
+  (unwrap fs {:id :trace}))

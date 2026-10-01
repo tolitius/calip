@@ -4,7 +4,8 @@
             [clojure.pprint :as pp]
             [clojure.string :as s]
             [clojure.test :refer :all]
-            [com.brunobonacci.mulog :as u]))
+            [com.brunobonacci.mulog :as u]
+            [robert.hooke :as hooke]))
 
 ;; test functions with fun names
 (defn dance [moves]
@@ -24,6 +25,9 @@
 
 (defn teleport [from to]
   {:from from :to to :distance (* (count from) (count to))})
+
+;; not a function: should never be wrapped
+(def the-answer 42)
 
 ;; namespace for wildcard tests
 (defn jump-high [] "up")
@@ -394,3 +398,111 @@
 
         ;; cleanup
         (c/untrace #{#'calip.test.core/dance})))))
+
+(deftest should-wrap-in-custom-advice
+  (testing "should wrap a function in a custom advice that can change args and results"
+    (binding [c/*silent* true]
+      (let [seen (atom nil)]
+        (c/wrap #{#'calip.test.core/dance}
+                (fn [fname f & args]
+                  (reset! seen fname)
+                  (inc (apply f (map inc args)))))
+
+        ;; (21 + 1) + 21 + 1
+        (is (= 44 (dance 21)))
+        (is (= #'calip.test.core/dance @seen))
+        (is (= {#'calip.test.core/dance #{:wrap}}
+               (select-keys (c/wrapped) [#'calip.test.core/dance])))
+
+        (c/unwrap #{#'calip.test.core/dance})
+        (is (= 42 (dance 21)))
+        (is (not (contains? (c/wrapped) #'calip.test.core/dance)))))))
+
+(deftest should-short-circuit-in-custom-advice
+  (testing "advice decides whether to call a function"
+    (binding [c/*silent* true]
+      (c/wrap #{#'calip.test.core/boom}
+              (fn [_ f & args]
+                (try
+                  (apply f args)
+                  (catch Exception _ :defused))))
+      (is (= :defused (boom "dynamite")))
+      (c/unwrap #{#'calip.test.core/boom})
+      (is (thrown? clojure.lang.ExceptionInfo (boom "dynamite"))))))
+
+(deftest should-stack-wrappers
+  (testing "should stack measure, trace and custom wrappers on the same function"
+    (binding [c/*silent* true]
+      (let [metrics (atom nil)
+            calls (atom [])]
+        (c/measure #{#'calip.test.core/dance} {:report #(reset! metrics %)})
+        (c/trace #{#'calip.test.core/dance})
+        (c/wrap #{#'calip.test.core/dance}
+                (fn [_ f & args]
+                  (swap! calls conj :wrap)
+                  (apply f args)))
+        (c/wrap #{#'calip.test.core/dance}
+                (fn [_ f & args]
+                  (swap! calls conj :retry)
+                  (apply f args))
+                {:id :retry})
+
+        (is (= #{:measure :trace :wrap :retry}
+               (get (c/wrapped) #'calip.test.core/dance)))
+        (is (= 42 (dance 21)))
+        (is (= 42 (:returned @metrics)))
+        ;; the last added wrapper is the outermost one
+        (is (= [:retry :wrap] @calls))
+
+        ;; remove just one
+        (reset! calls [])
+        (c/unwrap #{#'calip.test.core/dance} {:id :retry})
+        (is (= #{:measure :trace :wrap}
+               (get (c/wrapped) #'calip.test.core/dance)))
+        (dance 21)
+        (is (= [:wrap] @calls))
+
+        ;; untrace only removes the trace
+        (c/untrace #{#'calip.test.core/dance})
+        (is (= #{:measure :wrap}
+               (get (c/wrapped) #'calip.test.core/dance)))
+
+        ;; uncalip removes the rest
+        (c/uncalip #{#'calip.test.core/dance})
+        (reset! calls [])
+        (reset! metrics nil)
+        (is (= 42 (dance 21)))
+        (is (empty? @calls))
+        (is (nil? @metrics))
+        (is (not (contains? (c/wrapped) #'calip.test.core/dance)))))))
+
+(deftest should-keep-non-calip-hooks
+  (testing "uncalip should only remove calip wrappers"
+    (binding [c/*silent* true]
+      (hooke/add-hook #'calip.test.core/dance ::not-calip
+                      (fn [f & args] (* 2 (apply f args))))
+      (c/wrap #{#'calip.test.core/dance}
+              (fn [_ f & args] (inc (apply f args))))
+      (is (= 85 (dance 21)))
+      (c/uncalip #{#'calip.test.core/dance})
+      (is (= 84 (dance 21)))
+      (hooke/remove-hook #'calip.test.core/dance ::not-calip)
+      (is (= 42 (dance 21))))))
+
+(deftest should-skip-non-functions
+  (testing "wildcards should only wrap functions"
+    (binding [c/*silent* true]
+      (let [wrapped (c/wrap #{"#'calip.test.core/*"}
+                            (fn [_ f & args] (apply f args)))]
+        (is (contains? wrapped #'calip.test.core/dance))
+        (is (not (contains? wrapped #'calip.test.core/the-answer)))
+        (is (= 42 the-answer))
+        (c/uncalip wrapped)))))
+
+(deftest should-uncalip-all-wrapped
+  (testing "(uncalip (wrapped)) should remove all the wrappers"
+    (binding [c/*silent* true]
+      (c/measure #{#'calip.test.core/dance #'calip.test.core/brew-coffee})
+      (c/trace #{#'calip.test.core/dance})
+      (c/uncalip (c/wrapped))
+      (is (empty? (c/wrapped))))))

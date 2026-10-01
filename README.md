@@ -2,7 +2,8 @@
 
 measuring, tracing and debugging functions on demand _**without**_ a need to alter the code
 
-[![Clojars Project](http://clojars.org/tolitius/calip/latest-version.svg)](http://clojars.org/tolitius/calip)
+[![<! release](https://img.shields.io/badge/dynamic/json.svg?label=release&url=https%3A%2F%2Fclojars.org%2Ftolitius%2Fcalip%2Flatest-version.json&query=version&colorB=blue)](https://github.com/tolitius/calip/releases)
+[![<! clojars>](https://img.shields.io/clojars/v/tolitius/calip.svg)](https://clojars.org/tolitius/calip)
 
 - [what does it do?](#what-does-it-do)
 - [performance on demand](#performance-on-demand)
@@ -16,6 +17,10 @@ measuring, tracing and debugging functions on demand _**without**_ a need to alt
   - [respect the context](#respect-the-context)
   - [reveal the beauty](#reveal-the-beauty)
 - [match and wrap many functions](#match-and-wrap-many-functions)
+- [wrap them in anything](#wrap-them-in-anything)
+  - [stacking wrappers](#stacking-wrappers)
+  - [what is wrapped?](#what-is-wrapped)
+  - [things to know](#things-to-know)
 - [license](#license)
 
 ## what does it do?
@@ -95,8 +100,8 @@ or remove it from both:
 > _alternitevely all functions that are wrapped via calip can be removed with:_
 > ```clojure
 > => (calip/uncalip (calip/wrapped))
-> remove a wrapper from #'user/rmult
-> remove a wrapper from #'user/rsum
+> remove :measure wrapper from #'user/rmult
+> remove :measure wrapper from #'user/rsum
 > ```
 
 ## taming runtime errors
@@ -284,8 +289,8 @@ and trace'em without them knowing (i.e. :gift: wrap them in µ/trace):
 ```clojure
 => (calip/trace #{#'user/rsum
                   #'user/rmult})
-wrapping #'user/rsum in µ/trace
-wrapping #'user/rmult in µ/trace
+wrapping #'user/rsum in :trace
+wrapping #'user/rmult in :trace
 
 => (rsum 10)
 45
@@ -307,8 +312,8 @@ we can pass all of it in a map of options:
                   #'user/rmult} {:event-name ::calculator
                                  :pairs [:foo 42 :bar :zoo]
                                  :capture (fn [result] {:result-is result})})
-wrapping #'user/rsum in µ/trace
-wrapping #'user/rmult in µ/trace
+wrapping #'user/rsum in :trace
+wrapping #'user/rmult in :trace
 
 => (rmult 42)
 33452526613163807108170062053440751665152000000000N
@@ -336,8 +341,8 @@ we can remove traces by `calip/untrace`:
 ```clojure
 ;; removing previous µ/trace(s):
 => (calip/untrace #{#'user/rsum #'user/rmult})
-remove a wrapper from #'user/rsum
-remove a wrapper from #'user/rmult
+remove :trace wrapper from #'user/rsum
+remove :trace wrapper from #'user/rmult
 ```
 
 
@@ -350,8 +355,8 @@ remove a wrapper from #'user/rmult
                   #'user/rmult} {:format-args #(->> % first (str "meaning of life universe and everything: "))
                                  :pairs [:foo 42 :bar :zoo]
                                  :capture (fn [result] {:result-is result})})
-wrapping #'user/rsum in µ/trace
-wrapping #'user/rmult in µ/trace
+wrapping #'user/rsum in :trace
+wrapping #'user/rmult in :trace
 
 => (rmult 42)
 33452526613163807108170062053440751665152000000000N
@@ -489,19 +494,19 @@ this example is contrived on purpose, usually it'd be something like "`#'foo.bar
               #'star-wars/solo
               #'star-wars/binge})
 
-wrapping #'star-wars/one-offs in µ/trace
-wrapping #'star-wars/rogue-one in µ/trace
-wrapping #'star-wars/the-force-awakens in µ/trace
-wrapping #'star-wars/the-rise-of-skywalker in µ/trace
-wrapping #'star-wars/a-new-hope in µ/trace
-wrapping #'star-wars/attack-of-the-clones in µ/trace
-wrapping #'star-wars/binge in µ/trace
-wrapping #'star-wars/the-phantom-menace in µ/trace
-wrapping #'star-wars/the-empire-strikes-back in µ/trace
-wrapping #'star-wars/return-of-the-jedi in µ/trace
-wrapping #'star-wars/solo in µ/trace
-wrapping #'star-wars/the-last-jedi in µ/trace
-wrapping #'star-wars/revenge-of-the-sith in µ/trace
+wrapping #'star-wars/one-offs in :trace
+wrapping #'star-wars/rogue-one in :trace
+wrapping #'star-wars/the-force-awakens in :trace
+wrapping #'star-wars/the-rise-of-skywalker in :trace
+wrapping #'star-wars/a-new-hope in :trace
+wrapping #'star-wars/attack-of-the-clones in :trace
+wrapping #'star-wars/binge in :trace
+wrapping #'star-wars/the-phantom-menace in :trace
+wrapping #'star-wars/the-empire-strikes-back in :trace
+wrapping #'star-wars/return-of-the-jedi in :trace
+wrapping #'star-wars/solo in :trace
+wrapping #'star-wars/the-last-jedi in :trace
+wrapping #'star-wars/revenge-of-the-sith in :trace
 ```
 
 ready to binge? let's do it!
@@ -537,8 +542,8 @@ for example wrap only functions in a `user` namespace that start with "`r`":
 user=> (calip/measure #{"#'user/r*"})
 ```
 ```clojure
-adding hook to #'user/rmult
-adding hook to #'user/rsum
+wrapping #'user/rmult in :measure
+wrapping #'user/rsum in :measure
 ```
 
 or _all_ of the functions in the `user` ns:
@@ -547,22 +552,160 @@ or _all_ of the functions in the `user` ns:
 user=> (calip/measure #{"#'user/*"})
 ```
 
-would add "hooks" to:
+would wrap all the functions (values, macros, multimethods, etc. are skipped):
 
 ```clojure
-adding hook to #'user/+version+
-adding hook to #'user/check-sources
-adding hook to #'user/dev
-adding hook to #'user/log4b
-adding hook to #'user/rmult
-adding hook to #'user/rsum
+skipping #'user/+version+ since it is not a function
+wrapping #'user/check-sources in :measure
+wrapping #'user/dev in :measure
+wrapping #'user/log4b in :measure
+wrapping #'user/rmult in :measure
+wrapping #'user/rsum in :measure
 ```
 
 i.e. it expands `"#'user/*"` into all the `'user` functions currently known to the runtime.
 
+## wrap them in anything
+
+`measure` and `trace` are just two built in wrappers.<br/>
+calip can wrap functions in _any_ function (a.k.a. "[AOP](https://en.wikipedia.org/wiki/Aspect-oriented_programming) before/after/around advice") with `calip/wrap`.
+
+the `wrap` takes:
+
+* a function name (var)
+* the function itself
+* and its arguments:
+
+```clojure
+(fn [fname f & args]
+ ;; ...
+ )
+```
+
+and it is up to the this custom function (now the wrapper) whether to call the original / wrapped function, how many times, with which arguments, and what to return.
+
+an example with `rsum` from above:
+
+```clojure
+=> (calip/wrap #{#'user/rsum}
+               (fn [fname f & args]
+                 (println "calling" fname "with" args)
+                 (apply f args)))
+wrapping #'user/rsum in :wrap
+
+=> (rsum 10)
+calling #'user/rsum with (10)
+45
+```
+
+> [!NOTE]
+> a wrapping function explicitly calls the original function `(apply f args)` and returns its result<br/>
+> without it the original function is ("lost") never called and the wrapper would return `nil` by default
+
+
+#### another example
+
+you have a connect function (i.e. `#'user/connect`)<br/>
+and we need to add a retry a flaky connection without touching the code.
+
+we can write a wrapping function with a retry that _wraps_ the original function:
+
+```clojure
+=> (defn retry [fname f & args]
+     (loop [attempt 1]
+       (let [r (try (apply f args)
+                    (catch Exception e
+                      (if (< attempt 3) ::retry (throw e))))]
+         (if (= r ::retry)
+           (do (println fname "failed, attempt" attempt) (recur (inc attempt)))
+           r))))
+```
+
+and wrap it with calip:
+
+```
+=> (calip/wrap #{#'user/connect}
+               retry
+               {:id :retry})       ;; optionally you can pass an id of the wrapper
+wrapping #'user/connect in :retry
+```
+
+> [!NOTE]
+> an optional `:id` can be passed to `calip/wrap` to identify a wrapper.<br>
+> it can be used to remove a _specific_ wrapper later on
+
+#### another example
+
+you have a function that launches missiles (i.e. `#'user/launch-missiles`) and you want to short circuit it / don't call the function at all:
+
+```clojure
+=> (calip/wrap #{#'user/launch-missiles}
+               (fn [fname f & args]
+                 (println "not today:" fname args)
+                 :aborted))
+```
+
+
+#### removing wrappers:
+
+to remove all these wrappers, use `calip/unwrap`:
+
+```clojure
+=> (calip/unwrap #{#'user/rsum})
+remove :wrap wrapper from #'user/rsum
+```
+
+### stacking wrappers
+
+each wrapper has an id: `:measure`, `:trace`, `:wrap` (default for `calip/wrap`) or any custom `{:id ...}`.<br/>
+wrappers with different ids stack, so a function can be measured, traced and retried at the same time:
+
+```clojure
+=> (calip/measure #{#'user/connect})
+=> (calip/trace #{#'user/connect})
+=> (calip/wrap #{#'user/connect}
+               retry
+               {:id :retry})
+```
+
+the last added wrapper is the outermost one: in the example above, `retry` calls `trace`, which calls `measure`, which calls `connect`.<br/>
+wrapping again with the same id replaces that wrapper.
+
+> _if the order of wrappers matters, compose them into a single wrapper:: hooks are kept in a map, so the order is only guaranteed for up to 8 wrappers per function_
+
+a single wrapper can be removed by its id:
+
+```clojure
+=> (calip/unwrap #{#'user/connect}
+                 {:id :retry})
+remove :retry wrapper from #'user/connect
+```
+
+`untrace` only removes `:trace` wrappers, while `uncalip` / `unwrap` (without an `:id`) removes all calip wrappers.<br/>
+hooks that are not added by calip (i.e. directly via robert.hooke) are left alone.
+
+### what is wrapped?
+
+```clojure
+=> (calip/wrapped)
+{#'user/connect #{:measure :trace :retry}
+ #'user/rsum #{:wrap}}
+
+;; remove them all
+=> (calip/uncalip (calip/wrapped))
+```
+
+### things to know
+
+* the wrapper _must_ call `(apply f args)` itself if the function should run
+* only functions are wrapped: values, macros and multimethods are skipped
+* code compiled with [direct linking](https://clojure.org/reference/compilation#directlinking) (`-Dclojure.compiler.direct-linking=true`) calls functions without going through vars, so wrappers won't be called (unless a function is marked `^:redef`)
+* re-evaluating a function (i.e. `defn` or reloading a namespace) removes its wrappers, while `(calip/wrapped)` would still list them
+* recursive functions that call themselves through the var run the wrapper/advice on every call
+
 ## license
 
-Copyright © 2024 tolitius
+Copyright © 2026 tolitius
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.
